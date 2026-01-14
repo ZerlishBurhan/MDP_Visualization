@@ -1,3 +1,9 @@
+const grid = document.getElementById("grid");
+const gammaVal = document.getElementById("gammaVal");
+const thetaVal = document.getElementById("thetaVal");
+const algo = document.getElementById("algo");
+const cellMode = document.getElementById("cellMode");
+
 let gamma = 0.9;
 let theta = 0.001;
 

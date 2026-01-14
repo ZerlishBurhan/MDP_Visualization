@@ -8,8 +8,10 @@ def serialize(d):
 
 def handler(request):
     try:
-        body = request.body
-        data = json.loads(body)
+        raw_body = request.body or "{}"
+        if isinstance(raw_body, bytes):
+            raw_body = raw_body.decode("utf-8")
+        data = json.loads(raw_body)
 
         goal = {tuple(map(int, k.split(","))): v for k, v in data["goal_states"].items()}
         danger = {tuple(map(int, k.split(","))): v for k, v in data["danger_states"].items()}
@@ -27,7 +29,10 @@ def handler(request):
             V, history = value_iteration(mdp, data["gamma"], data["theta"])
             return {
                 "statusCode": 200,
-                "headers": { "Content-Type": "application/json" },
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
                 "body": json.dumps({
                     "history": [serialize(h) for h in history],
                     "policy": None
@@ -37,7 +42,10 @@ def handler(request):
         V, policy, history = policy_iteration(mdp, data["gamma"], data["theta"])
         return {
             "statusCode": 200,
-            "headers": { "Content-Type": "application/json" },
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*"
+            },
             "body": json.dumps({
                 "history": [serialize(h) for h in history],
                 "policy": serialize(policy)
