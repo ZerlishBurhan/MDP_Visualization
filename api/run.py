@@ -1,5 +1,10 @@
 from http.server import BaseHTTPRequestHandler
 import json
+import sys
+import os
+
+# Fix import path for Vercel
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from backend.mdp import MDP
 from backend.value_iteration import value_iteration
@@ -7,9 +12,19 @@ from backend.policy_iteration import policy_iteration
 
 
 class handler(BaseHTTPRequestHandler):
+
+    # -------- HEALTH CHECK (GET) --------
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            "status": "API is running. Use POST to compute MDP."
+        }).encode())
+
+    # -------- MAIN LOGIC (POST) --------
     def do_POST(self):
         try:
-            # ---- Read request body ----
             content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length)
             data = json.loads(body)
@@ -32,49 +47,42 @@ class handler(BaseHTTPRequestHandler):
 
             obstacles = [tuple(o) for o in data.get("obstacles", [])]
 
-            # ---- Create MDP ----
             mdp = MDP(
-                rows=rows,
-                cols=cols,
-                goal_states=goal_states,
-                danger_states=danger_states,
-                obstacles=obstacles,
+                rows,
+                cols,
+                goal_states,
+                danger_states,
+                obstacles
             )
 
-            # ---- Run Algorithm ----
             if algorithm == "policy":
                 V, policy, history = policy_iteration(mdp, gamma, theta)
             else:
                 V, history = value_iteration(mdp, gamma, theta)
                 policy = {}
 
-            # ---- Convert history for frontend ----
-            history_out = []
-            for h in history:
-                history_out.append(
-                    {f"{s[0]},{s[1]}": h[s] for s in h}
-                )
+            history_out = [
+                {f"{s[0]},{s[1]}": h[s] for s in h}
+                for h in history
+            ]
 
             policy_out = {
                 f"{s[0]},{s[1]}": policy[s]
                 for s in policy
             }
 
-            # ---- Response ----
-            response = {
-                "history": history_out,
-                "policy": policy_out
-            }
-
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(response).encode())
+            self.wfile.write(json.dumps({
+                "history": history_out,
+                "policy": policy_out
+            }).encode())
 
         except Exception as e:
             self.send_response(500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(
-                json.dumps({"error": str(e)}).encode()
-            )
+            self.wfile.write(json.dumps({
+                "error": str(e)
+            }).encode())
