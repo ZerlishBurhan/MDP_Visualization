@@ -2,7 +2,6 @@ import json
 import sys
 import os
 
-# Fix imports for Vercel
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(BASE_DIR)
 
@@ -10,24 +9,23 @@ from backend.mdp import MDP
 from backend.value_iteration import value_iteration
 from backend.policy_iteration import policy_iteration
 
-
-def handler(request, response):
-    """Vercel-compatible Python function handler."""
+# Vercel Lambda style handler
+def handler(event, context):
     try:
-        # --------- GET (Health Check) ----------
-        if request.method == "GET":
-            response.status_code = 200
-            response.headers["Content-Type"] = "application/json"
-            response.body = json.dumps({"status": "API running. Use POST."})
-            return response
+        # Health check (GET)
+        if event.get("method", "GET") == "GET":
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"status": "API running. Use POST."})
+            }
 
-        # --------- POST (Run MDP Algorithm) ----------
-        try:
-            data = request.json()
-        except Exception:
-            response.status_code = 400
-            response.body = json.dumps({"error": "Invalid JSON body"})
-            return response
+        # Read POST data
+        body = event.get("body")
+        if isinstance(body, str):
+            data = json.loads(body)
+        else:
+            data = body or {}
 
         rows = data.get("rows", 4)
         cols = data.get("cols", 4)
@@ -47,26 +45,29 @@ def handler(request, response):
 
         mdp = MDP(rows, cols, goal_states, danger_states, obstacles)
 
+        # Algorithm run
         if algorithm == "policy":
             V, policy, history = policy_iteration(mdp, gamma, theta)
         else:
             V, history = value_iteration(mdp, gamma, theta)
             policy = {}
 
-        # Format data for frontend
+        # Output data
         history_out = [{f"{s[0]},{s[1]}": h[s] for s in h} for h in history]
         policy_out = {f"{s[0]},{s[1]}": policy[s] for s in policy}
 
-        response.status_code = 200
-        response.headers["Content-Type"] = "application/json"
-        response.body = json.dumps({
-            "history": history_out,
-            "policy": policy_out
-        })
-        return response
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "history": history_out,
+                "policy": policy_out
+            })
+        }
 
     except Exception as e:
-        response.status_code = 500
-        response.headers["Content-Type"] = "application/json"
-        response.body = json.dumps({"error": str(e)})
-        return response
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
