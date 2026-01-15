@@ -1,57 +1,73 @@
 import json
 import sys
-from http.server import BaseHTTPRequestHandler
+import os
 
-# Local imports (same folder)
+# Fix imports for local modules
+BASE_DIR = os.path.dirname(__file__)
+sys.path.append(BASE_DIR)
+
 from mdp import MDP
 from value_iteration import value_iteration
 from policy_iteration import policy_iteration
 
-class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(json.dumps({"status": "API running. Use POST."}).encode())
+def handler(event, context):
+    try:
+        # Health check (GET)
+        if event.get("method", "GET") == "GET":
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"status": "API running. Use POST."})
+            }
 
-    def do_POST(self):
-        try:
-            content_length = int(self.headers['Content-Length'])
-            data = json.loads(self.rfile.read(content_length))
+        # Parse POST data
+        body = event.get("body")
+        if isinstance(body, str):
+            data = json.loads(body)
+        else:
+            data = body or {}
 
-            rows, cols = data.get("rows", 4), data.get("cols", 4)
-            gamma, theta = data.get("gamma", 0.9), data.get("theta", 0.001)
-            algorithm = data.get("algorithm", "value")
+        rows = data.get("rows", 4)
+        cols = data.get("cols", 4)
+        gamma = data.get("gamma", 0.9)
+        theta = data.get("theta", 0.001)
+        algorithm = data.get("algorithm", "value")
 
-            goal_states = {tuple(map(int, k.split(","))): v for k, v in data.get("goal_states", {}).items()}
-            danger_states = {tuple(map(int, k.split(","))): v for k, v in data.get("danger_states", {}).items()}
-            obstacles = [tuple(map(int, o)) for o in data.get("obstacles", [])]
+        goal_states = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("goal_states", {}).items()
+        }
+        danger_states = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("danger_states", {}).items()
+        }
+        obstacles = [tuple(map(int, o)) for o in data.get("obstacles", [])]
 
-            mdp = MDP(rows, cols, goal_states, danger_states, obstacles)
+        mdp = MDP(rows, cols, goal_states, danger_states, obstacles)
 
-            if algorithm == "policy":
-                V, policy, history = policy_iteration(mdp, gamma, theta)
-            else:
-                V, history = value_iteration(mdp, gamma, theta)
-                policy = {}
+        if algorithm == "policy":
+            V, policy, history = policy_iteration(mdp, gamma, theta)
+        else:
+            V, history = value_iteration(mdp, gamma, theta)
+            policy = {}
 
-            # Flatten history/policy for frontend
-            all_states = [(r, c) for r in range(rows) for c in range(cols) if (r, c) not in obstacles]
-            history_out = [{f"{s[0]},{s[1]}": h.get(s, 0) for s in all_states} for h in history]
-            policy_out = {f"{s[0]},{s[1]}": policy.get(s, "") for s in all_states}
+        # Format output for frontend
+        all_states = [(r, c) for r in range(rows) for c in range(cols) if (r, c) not in obstacles]
+        history_out = [{f"{s[0]},{s[1]}": h.get(s, 0) for s in all_states} for h in history]
+        policy_out = {f"{s[0]},{s[1]}": policy.get(s, "") for s in all_states}
 
-            response = {"history": history_out, "policy": policy_out}
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "history": history_out,
+                "policy": policy_out
+            })
+        }
 
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps(response).encode())
-
-        except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
-
-    def log_message(self, format, *args):
-        return
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
