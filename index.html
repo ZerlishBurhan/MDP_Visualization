@@ -1,77 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Interactive MDP GridWorld</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>MDP GridWorld Visualization</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <h1>Interactive MDP GridWorld</h1>
 
-<div class="header-section">
-    <h1>MDP Convergence Visualizer</h1>
-    <p>Watch how Reinforcement Learning algorithms find the optimal path.</p>
-</div>
-
-<div class="main-layout">
+  <div class="main-layout">
+    <!-- GRID SECTION -->
     <div class="grid-container">
-        <div id="grid"></div>
-        <div class="legend">
-            <div class="legend-item" data-type="goal"><span class="legend-icon goal-icon">&#9733;</span> Goal</div>
-            <div class="legend-item" data-type="danger"><span class="legend-icon danger-icon">X</span> Danger</div>
-            <div class="legend-item" data-type="obstacle"><span class="legend-icon obstacle-icon">■</span> Obstacle</div>
+      <div id="grid"></div>
+
+      <div class="legend">
+        <div class="legend-item" data-type="goal">
+          <span class="legend-icon goal-icon">&#9733;</span>
+          <span>Goal (+10)</span>
         </div>
+        <div class="legend-item" data-type="danger">
+          <span class="legend-icon danger-icon">X</span>
+          <span>Danger (−10)</span>
+        </div>
+        <div class="legend-item" data-type="obstacle">
+          <span class="legend-icon obstacle-icon">■</span>
+          <span>Obstacle</span>
+        </div>
+        <div class="legend-item" data-type="policy">
+          <span class="legend-icon">&#8593; &#8595; &#8592; &#8594;</span>
+          <span>Policy Arrows</span>
+        </div>
+      </div>
     </div>
 
+    <!-- CONTROL PANEL -->
     <div class="controls">
-        <div class="control-box">
-            <label>Algorithm</label>
-            <select id="algo">
-                <option value="value">Value Iteration</option>
-                <option value="policy">Policy Iteration</option>
-            </select>
-        </div>
-        <div class="control-box">
-            <label>Cell Mode</label>
-            <select id="cellMode">
-                <option value="normal">Normal</option>
-                <option value="goal">Set Goal</option>
-                <option value="danger">Set Danger</option>
-                <option value="obstacle">Set Obstacle</option>
-            </select>
-        </div>
-        <div class="control-box">
-            <label>Discount Factor (γ)</label>
-            <div class="qty">
-                <button onclick="changeGamma(-0.01)">−</button>
-                <span id="gammaVal">0.90</span>
-                <button onclick="changeGamma(0.01)">+</button>
-            </div>
-        </div>
-        <div class="control-box">
-            <button class="btn-run" onclick="runMDP()">Run Algorithm</button>
-            <button class="btn-step" onclick="stepMDP()">Next Step</button>
-            <button class="btn-reset" onclick="resetGrid()">Reset</button>
-        </div>
-    </div>
+      <div class="control-box">
+        <label>Algorithm</label>
+        <select id="algo">
+          <option value="value">Value Iteration</option>
+          <option value="policy">Policy Iteration</option>
+        </select>
+      </div>
 
-    <div class="graph-container">
-        <h3>Convergence (Max Delta)</h3>
-        <canvas id="convergenceChart"></canvas>
-    </div>
-</div>
+      <div class="control-box">
+        <label>Cell Mode</label>
+        <select id="cellMode">
+          <option value="normal">Normal</option>
+          <option value="goal">Set Goal</option>
+          <option value="danger">Set Danger</option>
+          <option value="obstacle">Set Obstacle</option>
+        </select>
+      </div>
 
-<div class="info-section">
-    <div class="info-card">
-        <h3>Value Iteration</h3>
-        <p>Har state ki value ko bar-bar update karta hai Bellman Equation use karke jab tak wo stable (converge) na ho jaye. Ye slow par reliable hai.</p>
-    </div>
-    <div class="info-card">
-        <h3>Policy Iteration</h3>
-        <p>Ye do steps mein chalta hai: pehle policy evaluate karta hai, phir usse improve karta hai. Ye aksar kam iterations mein converge ho jata hai.</p>
-    </div>
-</div>
+      <div class="control-box">
+        <label>Discount Factor (γ)</label>
+        <div class="qty">
+          <button onclick="changeGamma(-0.01)">−</button>
+          <span id="gammaVal">0.90</span>
+          <button onclick="changeGamma(0.01)">+</button>
+        </div>
+      </div>
 
-<script src="script.js"></script>
+      <div class="control-box">
+        <label>Theta (θ)</label>
+        <div class="qty">
+          <button onclick="changeTheta(-0.0005)">−</button>
+          <span id="thetaVal">0.0010</span>
+          <button onclick="changeTheta(0.0005)">+</button>
+        </div>
+      </div>
+
+      <div class="control-box">
+        <button onclick="runMDP()">Run</button>
+        <button onclick="stepMDP()">Next Step</button>
+        <button onclick="resetGrid()">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INFO & ANIMATION SECTION -->
+  <div class="info-section">
+    <h2>Convergence Graph</h2>
+    <canvas id="convergenceChart"></canvas>
+
+    <div class="description">
+      <h3>Algorithm Explanation</h3>
+      <p id="algoDescription">
+        Select an algorithm to learn how it updates value functions over time and converges toward an optimal policy.
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
