@@ -4,47 +4,49 @@
   <meta charset="UTF-8">
   <title>MDP GridWorld Visualization</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-  <h1>Interactive MDP GridWorld</h1>
+  <!-- ============ HEADER ============ -->
+  <header>
+    <h1>Interactive MDP GridWorld</h1>
+  </header>
 
-  <div class="main-layout">
-    <!-- GRID SECTION -->
-    <div class="grid-container">
-      <div id="grid"></div>
+  <!-- ============ MAIN LAYOUT ============ -->
+  <main class="main-layout">
 
-      <div class="legend">
-        <div class="legend-item" data-type="goal">
-          <span class="legend-icon goal-icon">&#9733;</span>
-          <span>Goal (+10)</span>
-        </div>
-        <div class="legend-item" data-type="danger">
-          <span class="legend-icon danger-icon">X</span>
-          <span>Danger (−10)</span>
-        </div>
-        <div class="legend-item" data-type="obstacle">
-          <span class="legend-icon obstacle-icon">■</span>
-          <span>Obstacle</span>
-        </div>
-        <div class="legend-item" data-type="policy">
-          <span class="legend-icon">&#8593; &#8595; &#8592; &#8594;</span>
-          <span>Policy Arrows</span>
+    <!-- ========== GRID SECTION ========== -->
+    <section class="grid-section">
+      <div class="grid-container">
+        <div id="grid"></div>
+
+        <!-- LEGEND -->
+        <div class="legend">
+          <div class="legend-item" data-type="goal">
+            <span class="legend-icon goal-icon">&#9733;</span>
+            <span>Goal (+10)</span>
+          </div>
+          <div class="legend-item" data-type="danger">
+            <span class="legend-icon danger-icon">X</span>
+            <span>Danger (−10)</span>
+          </div>
+          <div class="legend-item" data-type="obstacle">
+            <span class="legend-icon obstacle-icon">■</span>
+            <span>Obstacle</span>
+          </div>
+          <div class="legend-item" data-type="policy">
+            <span class="legend-icon">&#8593; &#8595; &#8592; &#8594;</span>
+            <span>Policy Arrows</span>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="info-section">
-  <h2>Convergence Visualization</h2>
-  <canvas id="convergenceChart"></canvas>
-
-  <h3>Algorithm Comparison</h3>
-  <canvas id="comparisonChart"></canvas>
-</div>
-
-    <!-- CONTROL PANEL -->
-    <div class="controls">
+    <!-- ========== CONTROL PANEL ========== -->
+    <aside class="controls">
       <div class="control-box">
-        <label>Algorithm</label>
+        <label for="algo">Algorithm</label>
         <select id="algo">
           <option value="value">Value Iteration</option>
           <option value="policy">Policy Iteration</option>
@@ -52,7 +54,7 @@
       </div>
 
       <div class="control-box">
-        <label>Cell Mode</label>
+        <label for="cellMode">Cell Mode</label>
         <select id="cellMode">
           <option value="normal">Normal</option>
           <option value="goal">Set Goal</option>
@@ -84,23 +86,32 @@
         <button onclick="stepMDP()">Next Step</button>
         <button onclick="resetGrid()">Reset</button>
       </div>
-    </div>
-  </div>
+    </aside>
+  </main>
 
-  <!-- INFO & ANIMATION SECTION -->
-  <div class="info-section">
-    <h2>Convergence Graph</h2>
+  <!-- ============ ANALYSIS & VISUALIZATION SECTION ============ -->
+  <section class="analysis-section">
+    <h2>Convergence Visualization</h2>
     <canvas id="convergenceChart"></canvas>
+
+    <h3>Algorithm Comparison</h3>
+    <canvas id="comparisonChart"></canvas>
 
     <div class="description">
       <h3>Algorithm Explanation</h3>
       <p id="algoDescription">
-        Select an algorithm to learn how it updates value functions over time and converges toward an optimal policy.
+        Select an algorithm to visualize how its value function evolves and converges toward an optimal policy. 
+        The convergence graphs below compare the performance of Value Iteration and Policy Iteration in real-time.
       </p>
     </div>
-  </div>
+  </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- ============ FOOTER (OPTIONAL) ============ -->
+  <footer>
+    <p>Developed by Ahmed Shahzad, Zerlish Burhan & Esha Naz — AI Assignment 02</p>
+  </footer>
+
+  <!-- JS -->
   <script src="script.js"></script>
 </body>
 </html>
