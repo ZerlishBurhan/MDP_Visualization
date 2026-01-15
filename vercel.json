@@ -7,6 +7,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/run.py" },
+    { "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico))", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
