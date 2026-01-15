@@ -12,12 +12,22 @@ from backend.policy_iteration import policy_iteration
 
 
 def handler(request, response):
+    """Vercel-compatible Python function handler."""
     try:
+        # --------- GET (Health Check) ----------
         if request.method == "GET":
-            return response.status(200).json({"status": "API running. Use POST."})
+            response.status_code = 200
+            response.headers["Content-Type"] = "application/json"
+            response.body = json.dumps({"status": "API running. Use POST."})
+            return response
 
-        # Read POST body safely
-        data = request.get_json()
+        # --------- POST (Run MDP Algorithm) ----------
+        try:
+            data = request.json()
+        except Exception:
+            response.status_code = 400
+            response.body = json.dumps({"error": "Invalid JSON body"})
+            return response
 
         rows = data.get("rows", 4)
         cols = data.get("cols", 4)
@@ -29,12 +39,10 @@ def handler(request, response):
             tuple(map(int, k.split(","))): v
             for k, v in data.get("goal_states", {}).items()
         }
-
         danger_states = {
             tuple(map(int, k.split(","))): v
             for k, v in data.get("danger_states", {}).items()
         }
-
         obstacles = [tuple(o) for o in data.get("obstacles", [])]
 
         mdp = MDP(rows, cols, goal_states, danger_states, obstacles)
@@ -45,16 +53,20 @@ def handler(request, response):
             V, history = value_iteration(mdp, gamma, theta)
             policy = {}
 
-        history_out = [
-            {f"{s[0]},{s[1]}": h[s] for s in h} for h in history
-        ]
-
+        # Format data for frontend
+        history_out = [{f"{s[0]},{s[1]}": h[s] for s in h} for h in history]
         policy_out = {f"{s[0]},{s[1]}": policy[s] for s in policy}
 
-        return response.status(200).json({
+        response.status_code = 200
+        response.headers["Content-Type"] = "application/json"
+        response.body = json.dumps({
             "history": history_out,
             "policy": policy_out
         })
+        return response
 
     except Exception as e:
-        return response.status(500).json({"error": str(e)})
+        response.status_code = 500
+        response.headers["Content-Type"] = "application/json"
+        response.body = json.dumps({"error": str(e)})
+        return response
