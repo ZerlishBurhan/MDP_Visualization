@@ -3,7 +3,6 @@ const gammaVal = document.getElementById("gammaVal");
 const thetaVal = document.getElementById("thetaVal");
 const algo = document.getElementById("algo");
 const cellMode = document.getElementById("cellMode");
-const algoDescription = document.getElementById("algoDescription");
 
 let gamma = 0.9;
 let theta = 0.001;
@@ -14,7 +13,9 @@ let dangerStates = {};
 let obstacles = [];
 let currentPolicy = {};
 let chart = null;
+let comparisonChart = null;
 
+// ARROW SYMBOLS
 const ARROWS = {
   UP: "&uarr;",
   DOWN: "&darr;",
@@ -22,24 +23,10 @@ const ARROWS = {
   RIGHT: "&rarr;",
 };
 
+// ================ BASIC UI UPDATE ===================
 function updateUI() {
   gammaVal.innerText = gamma.toFixed(2);
   thetaVal.innerText = theta.toFixed(4);
-  updateAlgoDescription();
-}
-
-function updateAlgoDescription() {
-  if (algo.value === "value") {
-    algoDescription.innerHTML = `
-      <b>Value Iteration:</b> Repeatedly updates each state's value 
-      until it converges. It uses Bellman Optimality to estimate the 
-      long-term reward from every state and action.`;
-  } else {
-    algoDescription.innerHTML = `
-      <b>Policy Iteration:</b> Alternates between policy evaluation 
-      (estimating the value of a policy) and policy improvement 
-      (updating to a better policy) until stable.`;
-  }
 }
 
 function changeGamma(d) {
@@ -52,14 +39,10 @@ function changeTheta(d) {
   updateUI();
 }
 
-function heat(v) {
-  if (v < -5) return "low";
-  if (v < 2) return "mid";
-  return "high";
-}
-
-function drawGrid(values = {}) {
+// ================ GRID DRAW FUNCTION ===================
+function drawGrid(values = {}, policy = {}) {
   grid.innerHTML = "";
+
   for (let r = 0; r < 4; r++) {
     for (let c = 0; c < 4; c++) {
       const key = `${r},${c}`;
@@ -78,9 +61,11 @@ function drawGrid(values = {}) {
         cell.classList.add(heat(values[key]));
         cell.innerHTML = `
           <div class="value">${values[key].toFixed(2)}</div>
-          ${currentPolicy[key]
-            ? `<div class="arrow">${ARROWS[currentPolicy[key]]}</div>`
-            : ""}
+          ${
+            policy[key]
+              ? `<div class="arrow">${ARROWS[policy[key]]}</div>`
+              : ""
+          }
         `;
       }
 
@@ -90,6 +75,14 @@ function drawGrid(values = {}) {
   }
 }
 
+// ================ COLOR SCALE ===================
+function heat(v) {
+  if (v < -5) return "low";
+  if (v < 2) return "mid";
+  return "high";
+}
+
+// ================ CELL CLICK LOGIC ===================
 function cellClick(key) {
   const mode = cellMode.value;
   if (mode === "goal") {
@@ -108,6 +101,7 @@ function cellClick(key) {
   drawGrid();
 }
 
+// ================ RUN MDP ===================
 function runMDP() {
   fetch("/api/run", {
     method: "POST",
@@ -128,14 +122,36 @@ function runMDP() {
       history = data.history;
       currentPolicy = data.policy || {};
       stepIndex = 0;
-      drawGrid(history[0]);
-      animateConvergence(history);
+
+      drawGrid(history[0], {});
+      animateConvergence(history, algo.value);
+      drawComparisonChart();
     })
-    .catch((err) => console.error("API Error:", err));
+    .catch((err) => console.error("Error:", err));
 }
 
-function animateConvergence(history) {
-  // Calculate difference between steps (Δ values)
+// ================ NEXT STEP ===================
+function stepMDP() {
+  if (stepIndex < history.length) {
+    drawGrid(history[stepIndex], {});
+    stepIndex++;
+  } else {
+    drawGrid(history[history.length - 1], currentPolicy); // show final optimal policy
+  }
+}
+
+// ================ RESET GRID ===================
+function resetGrid() {
+  goalStates = {};
+  dangerStates = {};
+  obstacles = [];
+  history = [];
+  stepIndex = 0;
+  drawGrid();
+}
+
+// ================ ANIMATE CONVERGENCE GRAPH ===================
+function animateConvergence(history, algoName) {
   const diffs = [];
   for (let i = 1; i < history.length; i++) {
     let diff = 0;
@@ -149,110 +165,151 @@ function animateConvergence(history) {
   const ctx = document.getElementById("convergenceChart").getContext("2d");
   if (chart) chart.destroy();
 
-  // Create gradient for beautiful curve
   const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, "#22d3ee"); // cyan
-  gradient.addColorStop(0.5, "#3b82f6"); // blue
-  gradient.addColorStop(1, "#22c55e"); // green
+  gradient.addColorStop(0, "#22d3ee");
+  gradient.addColorStop(0.5, "#3b82f6");
+  gradient.addColorStop(1, "#22c55e");
 
   chart = new Chart(ctx, {
     type: "line",
     data: {
       labels: diffs.map((_, i) => `Iter ${i + 1}`),
-      datasets: [{
-        label: "Value Convergence (Δ)",
-        data: diffs,
-        fill: true,
-        borderColor: gradient,
-        backgroundColor: "rgba(59, 130, 246, 0.08)",
-        borderWidth: 3,
-        tension: 0.4,
-        pointRadius: 5,
-        pointBackgroundColor: "#38bdf8",
-        pointBorderColor: "#ffffff",
-        pointHoverRadius: 9,
-        pointHoverBackgroundColor: "#facc15",
-        pointHoverBorderColor: "#ffffff",
-        pointHoverBorderWidth: 2
-      }]
+      datasets: [
+        {
+          label: `${algoName.toUpperCase()} Convergence (Δ)`,
+          data: diffs,
+          fill: true,
+          borderColor: gradient,
+          backgroundColor: "rgba(59, 130, 246, 0.08)",
+          borderWidth: 3,
+          tension: 0.4,
+          pointRadius: 4,
+          pointBackgroundColor: "#38bdf8",
+        },
+      ],
     },
     options: {
       responsive: true,
-      animation: {
-        duration: 1000,
-        easing: "easeOutQuart",
-        onProgress: function(animation) {
-          const progress = animation.currentStep / animation.numSteps;
-          const activeIndex = Math.floor(progress * diffs.length);
-          const activePoint = chart.getDatasetMeta(0).data[activeIndex];
-          if (activePoint) {
-            activePoint.custom = { radius: 10 };
-          }
-        },
-      },
+      animation: { duration: 1200 },
       plugins: {
-        legend: {
-          labels: { color: "#cbd5e1", font: { size: 14 } }
-        },
+        legend: { labels: { color: "#cbd5e1" } },
         tooltip: {
           backgroundColor: "#1e293b",
           borderColor: "#38bdf8",
           borderWidth: 1,
-          titleFont: { size: 14 },
-          bodyFont: { size: 13 },
           displayColors: false,
           callbacks: {
-            label: function(context) {
-              return `Δ = ${context.formattedValue}`;
-            }
-          }
-        }
+            label: (context) => `Δ = ${context.formattedValue}`,
+          },
+        },
       },
       scales: {
-        x: {
-          title: { display: true, text: "Iterations", color: "#93c5fd", font: { size: 14 } },
-          ticks: { color: "#cbd5e1" },
-          grid: { color: "rgba(148, 163, 184, 0.2)" }
-        },
-        y: {
-          title: { display: true, text: "Δ Value Change", color: "#93c5fd", font: { size: 14 } },
-          ticks: { color: "#cbd5e1" },
-          grid: { color: "rgba(148, 163, 184, 0.2)" },
-          beginAtZero: true
-        }
-      }
-    }
+        x: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+        y: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+      },
+    },
   });
-
-  // Dynamic glow effect
-  setTimeout(() => {
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i >= diffs.length) return clearInterval(interval);
-      chart.setActiveElements([{ datasetIndex: 0, index: i }]);
-      chart.update();
-      i++;
-    }, 800);
-  }, 600);
 }
 
+// ================ ALGORITHM COMPARISON ===================
+async function drawComparisonChart() {
+  const algorithms = ["value", "policy"];
+  const results = {};
 
-function stepMDP() {
-  if (stepIndex < history.length) {
-    drawGrid(history[stepIndex]);
-    stepIndex++;
+  for (let algoType of algorithms) {
+    const response = await fetch("/api/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rows: 4,
+        cols: 4,
+        gamma,
+        theta,
+        algorithm: algoType,
+        goal_states: goalStates,
+        danger_states: dangerStates,
+        obstacles: obstacles.map((o) => o.split(",").map(Number)),
+      }),
+    });
+    const data = await response.json();
+    const diffs = [];
+    for (let i = 1; i < data.history.length; i++) {
+      let diff = 0;
+      const keys = Object.keys(data.history[i]);
+      keys.forEach((k) => {
+        diff += Math.abs(data.history[i][k] - data.history[i - 1][k]);
+      });
+      diffs.push(diff.toFixed(5));
+    }
+    results[algoType] = diffs;
   }
+
+  const ctx2 = document.getElementById("comparisonChart").getContext("2d");
+  if (comparisonChart) comparisonChart.destroy();
+
+  comparisonChart = new Chart(ctx2, {
+    type: "line",
+    data: {
+      labels: results["value"].map((_, i) => `Iter ${i + 1}`),
+      datasets: [
+        {
+          label: "Value Iteration Δ",
+          data: results["value"],
+          borderColor: "#3b82f6",
+          tension: 0.4,
+          borderWidth: 3,
+        },
+        {
+          label: "Policy Iteration Δ",
+          data: results["policy"],
+          borderColor: "#22c55e",
+          tension: 0.4,
+          borderWidth: 3,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#cbd5e1" } },
+      },
+      scales: {
+        x: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+        y: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+      },
+    },
+  });
 }
 
-function resetGrid() {
-  goalStates = {};
-  dangerStates = {};
-  obstacles = [];
-  history = [];
-  stepIndex = 0;
-  drawGrid();
-  if (chart) chart.destroy();
-}
-
+// ================ STARTUP ===================
 updateUI();
 drawGrid();
+
+document.querySelectorAll(".legend-item").forEach((item) => {
+  item.addEventListener("mouseenter", () => highlightCells(item.dataset.type));
+  item.addEventListener("mouseleave", clearHighlights);
+});
+
+function highlightCells(type) {
+  document.querySelectorAll(".cell").forEach((cell) => {
+    cell.classList.remove("highlight");
+
+    if (
+      (type === "goal" && cell.classList.contains("goal")) ||
+      (type === "danger" && cell.classList.contains("danger")) ||
+      (type === "obstacle" && cell.classList.contains("obstacle")) ||
+      (type === "value" &&
+        (cell.classList.contains("low") ||
+          cell.classList.contains("mid") ||
+          cell.classList.contains("high")))
+    ) {
+      cell.classList.add("highlight");
+    }
+  });
+}
+
+function clearHighlights() {
+  document
+    .querySelectorAll(".cell")
+    .forEach((cell) => cell.classList.remove("highlight"));
+}
