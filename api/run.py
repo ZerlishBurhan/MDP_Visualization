@@ -1,28 +1,30 @@
 import json
-import os
 import sys
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 sys.path.append(BASE_DIR)
 
 from backend.mdp import MDP
 from backend.value_iteration import value_iteration
 from backend.policy_iteration import policy_iteration
 
-app = Flask(__name__)
-CORS(app) 
-
-@app.route('/api/run', methods=['POST', 'GET'])
-def run_mdp_api():
-    if request.method == "GET":
-        return jsonify({"status": "API is running"}), 200
-
+def handler(event, context):
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
+        # For GET request (health check)
+        if event.get("method", "GET") == "GET":
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"status": "API running. Use POST."})
+            }
+
+        # Parse JSON body safely
+        body = event.get("body")
+        if isinstance(body, str):
+            data = json.loads(body)
+        else:
+            data = body or {}
 
         rows = data.get("rows", 4)
         cols = data.get("cols", 4)
@@ -30,11 +32,14 @@ def run_mdp_api():
         theta = data.get("theta", 0.001)
         algorithm = data.get("algorithm", "value")
 
-        # Convert keys from "0,0" strings to (0,0) tuples
-        goal_states = {tuple(map(int, k.split(","))): v for k, v in data.get("goal_states", {}).items()}
-        danger_states = {tuple(map(int, k.split(","))): v for k, v in data.get("danger_states", {}).items()}
-        
-        # Convert obstacles from [[0,1]] to [(0,1)]
+        goal_states = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("goal_states", {}).items()
+        }
+        danger_states = {
+            tuple(map(int, k.split(","))): v
+            for k, v in data.get("danger_states", {}).items()
+        }
         obstacles = [tuple(o) for o in data.get("obstacles", [])]
 
         mdp = MDP(rows, cols, goal_states, danger_states, obstacles)
@@ -43,25 +48,23 @@ def run_mdp_api():
             V, policy, history = policy_iteration(mdp, gamma, theta)
         else:
             V, history = value_iteration(mdp, gamma, theta)
-            # Simple policy generation for value iteration
             policy = {}
-            for s in mdp.states:
-                if not mdp.grid.is_terminal(s):
-                    best_a = max(mdp.actions, key=lambda a: sum(p * (mdp.get_reward(ns) + gamma * V[ns]) 
-                                  for ns, p in mdp.get_transition_states_and_probs(s, a)))
-                    policy[s] = best_a
 
-        # Format output for JSON
         history_out = [{f"{s[0]},{s[1]}": h[s] for s in h} for h in history]
-        policy_out = {f"{s[0]},{s[1]}": policy.get(s, "") for s in policy}
+        policy_out = {f"{s[0]},{s[1]}": policy[s] for s in policy}
 
-        return jsonify({
-            "history": history_out,
-            "policy": policy_out
-        })
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({
+                "history": history_out,
+                "policy": policy_out
+            })
+        }
 
     except Exception as e:
-        print(f"Error: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-handler = app
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": str(e)})
+        }
