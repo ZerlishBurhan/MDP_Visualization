@@ -135,6 +135,7 @@ function runMDP() {
 }
 
 function animateConvergence(history) {
+  // Calculate difference between steps (Δ values)
   const diffs = [];
   for (let i = 1; i < history.length; i++) {
     let diff = 0;
@@ -142,11 +143,17 @@ function animateConvergence(history) {
     keys.forEach((k) => {
       diff += Math.abs(history[i][k] - history[i - 1][k]);
     });
-    diffs.push(diff);
+    diffs.push(diff.toFixed(5));
   }
 
   const ctx = document.getElementById("convergenceChart").getContext("2d");
   if (chart) chart.destroy();
+
+  // Create gradient for beautiful curve
+  const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+  gradient.addColorStop(0, "#22d3ee"); // cyan
+  gradient.addColorStop(0.5, "#3b82f6"); // blue
+  gradient.addColorStop(1, "#22c55e"); // green
 
   chart = new Chart(ctx, {
     type: "line",
@@ -155,25 +162,80 @@ function animateConvergence(history) {
       datasets: [{
         label: "Value Convergence (Δ)",
         data: diffs,
-        fill: false,
-        borderColor: "#38bdf8",
-        tension: 0.3,
-        pointRadius: 4,
+        fill: true,
+        borderColor: gradient,
+        backgroundColor: "rgba(59, 130, 246, 0.08)",
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 5,
+        pointBackgroundColor: "#38bdf8",
+        pointBorderColor: "#ffffff",
+        pointHoverRadius: 9,
+        pointHoverBackgroundColor: "#facc15",
+        pointHoverBorderColor: "#ffffff",
+        pointHoverBorderWidth: 2
       }]
     },
     options: {
       responsive: true,
       animation: {
-        duration: 1200,
-        easing: "easeOutQuart"
+        duration: 1000,
+        easing: "easeOutQuart",
+        onProgress: function(animation) {
+          const progress = animation.currentStep / animation.numSteps;
+          const activeIndex = Math.floor(progress * diffs.length);
+          const activePoint = chart.getDatasetMeta(0).data[activeIndex];
+          if (activePoint) {
+            activePoint.custom = { radius: 10 };
+          }
+        },
+      },
+      plugins: {
+        legend: {
+          labels: { color: "#cbd5e1", font: { size: 14 } }
+        },
+        tooltip: {
+          backgroundColor: "#1e293b",
+          borderColor: "#38bdf8",
+          borderWidth: 1,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 },
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              return `Δ = ${context.formattedValue}`;
+            }
+          }
+        }
       },
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: "Δ Value Change" } },
-        x: { title: { display: true, text: "Iteration Steps" } }
+        x: {
+          title: { display: true, text: "Iterations", color: "#93c5fd", font: { size: 14 } },
+          ticks: { color: "#cbd5e1" },
+          grid: { color: "rgba(148, 163, 184, 0.2)" }
+        },
+        y: {
+          title: { display: true, text: "Δ Value Change", color: "#93c5fd", font: { size: 14 } },
+          ticks: { color: "#cbd5e1" },
+          grid: { color: "rgba(148, 163, 184, 0.2)" },
+          beginAtZero: true
+        }
       }
     }
   });
+
+  // Dynamic glow effect
+  setTimeout(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i >= diffs.length) return clearInterval(interval);
+      chart.setActiveElements([{ datasetIndex: 0, index: i }]);
+      chart.update();
+      i++;
+    }, 800);
+  }, 600);
 }
+
 
 function stepMDP() {
   if (stepIndex < history.length) {
