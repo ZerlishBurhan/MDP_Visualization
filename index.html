@@ -38,6 +38,26 @@
         <div class="card-header">
           <h2>Grid Environment</h2>
         </div>
+
+        <!-- STATS BAR -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <span class="stat-label">Algorithm:</span>
+            <span id="statAlgo" class="stat-value">--</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Iterations:</span>
+            <span id="statIter" class="stat-value">--</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Converged:</span>
+            <span id="statConv" class="stat-value">--</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Max Δ:</span>
+            <span id="statDelta" class="stat-value">--</span>
+          </div>
+        </div>
         
         <div class="grid-wrapper">
           <div id="grid" class="grid-board"></div>
@@ -99,7 +119,7 @@
 
           <div class="control-group">
             <div class="label-row">
-              <label title="Determines importance of future rewards (0-1)">Discount (γ) <span class="info-icon">?</span></label>
+              <label>Discount (γ) <span class="info-icon" data-tooltip="Determines importance of future rewards (0-1)">?</span></label>
               <span id="gammaVal" class="val-display">0.90</span>
             </div>
             <div class="button-group">
@@ -110,7 +130,7 @@
 
           <div class="control-group">
             <div class="label-row">
-              <label title="Convergence threshold for stopping the algorithm">Theta (θ) <span class="info-icon">?</span></label>
+              <label>Theta (θ) <span class="info-icon" data-tooltip="Convergence threshold for stopping the algorithm">?</span></label>
               <span id="thetaVal" class="val-display">0.0010</span>
             </div>
             <div class="button-group">

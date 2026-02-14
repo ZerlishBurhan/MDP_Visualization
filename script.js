@@ -5,6 +5,11 @@ const algo = document.getElementById("algo");
 const cellMode = document.getElementById("cellMode");
 const loadingOverlay = document.getElementById("loadingOverlay");
 
+const statAlgo = document.getElementById("statAlgo");
+const statIter = document.getElementById("statIter");
+const statConv = document.getElementById("statConv");
+const statDelta = document.getElementById("statDelta");
+
 let gamma = 0.9;
 let theta = 0.001;
 let history = [];
@@ -45,6 +50,36 @@ function setLoading(active) {
     loadingOverlay.classList.remove('hidden');
   } else {
     loadingOverlay.classList.add('hidden');
+  }
+}
+
+function updateStats(historyData, algorithm) {
+  statAlgo.innerText = algorithm === 'value' ? 'Value Iteration' : 'Policy Iteration';
+  
+  if (historyData && historyData.length > 0) {
+    statIter.innerText = historyData.length;
+    statConv.innerText = "Yes"; // If backend returned, it converged or hit max iter
+    
+    // Calculate Max Delta of last step if valid
+    if (historyData.length > 1) {
+      const last = historyData[historyData.length - 1];
+      const prev = historyData[historyData.length - 2];
+      let maxDelta = 0;
+      // Last and prev are dictionaries with "r,c" keys
+      // Wait, API returns "r,c" keys.
+      for (let key in last) {
+        let valLast = last[key] || 0;
+        let valPrev = prev[key] || 0;
+        maxDelta = Math.max(maxDelta, Math.abs(valLast - valPrev));
+      }
+      statDelta.innerText = maxDelta.toFixed(5);
+    } else {
+      statDelta.innerText = "N/A";
+    }
+  } else {
+    statIter.innerText = "--";
+    statConv.innerText = "--";
+    statDelta.innerText = "--";
   }
 }
 
@@ -137,6 +172,7 @@ function runMDP() {
         stepIndex = 0;
 
         drawGrid(history[0], {});
+        updateStats(history, algo.value); // UPADTE STATS HERE
         animateConvergence(history, algo.value);
         drawComparisonChart().then(() => setLoading(false));
       })
