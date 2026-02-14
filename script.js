@@ -3,6 +3,7 @@ const gammaVal = document.getElementById("gammaVal");
 const thetaVal = document.getElementById("thetaVal");
 const algo = document.getElementById("algo");
 const cellMode = document.getElementById("cellMode");
+const loadingOverlay = document.getElementById("loadingOverlay");
 
 let gamma = 0.9;
 let theta = 0.001;
@@ -37,6 +38,14 @@ function changeGamma(d) {
 function changeTheta(d) {
   theta = Math.min(0.1, Math.max(0.0001, theta + d));
   updateUI();
+}
+
+function setLoading(active) {
+  if (active) {
+    loadingOverlay.classList.remove('hidden');
+  } else {
+    loadingOverlay.classList.add('hidden');
+  }
 }
 
 // ================ GRID DRAW FUNCTION ===================
@@ -103,35 +112,46 @@ function cellClick(key) {
 
 // ================ RUN MDP ===================
 function runMDP() {
-  fetch("/api/run", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      rows: 4,
-      cols: 4,
-      gamma,
-      theta,
-      algorithm: algo.value,
-      goal_states: goalStates,
-      danger_states: dangerStates,
-      obstacles: obstacles.map((o) => o.split(",").map(Number)),
-    }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      history = data.history;
-      currentPolicy = data.policy || {};
-      stepIndex = 0;
-
-      drawGrid(history[0], {});
-      animateConvergence(history, algo.value);
-      drawComparisonChart();
+  setLoading(true);
+  
+  // Artificial delay to show smooth loading state
+  setTimeout(() => {
+    fetch("/api/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rows: 4,
+        cols: 4,
+        gamma,
+        theta,
+        algorithm: algo.value,
+        goal_states: goalStates,
+        danger_states: dangerStates,
+        obstacles: obstacles.map((o) => o.split(",").map(Number)),
+      }),
     })
-    .catch((err) => console.error("Error:", err));
+      .then((res) => res.json())
+      .then((data) => {
+        history = data.history;
+        currentPolicy = data.policy || {};
+        stepIndex = 0;
+
+        drawGrid(history[0], {});
+        animateConvergence(history, algo.value);
+        drawComparisonChart().then(() => setLoading(false));
+      })
+      .catch((err) => {
+        console.error("Error:", err);
+        setLoading(false);
+        alert("An error occurred. Check console for details.");
+      });
+  }, 500);
 }
 
 // ================ NEXT STEP ===================
 function stepMDP() {
+  if (history.length === 0) return;
+  
   if (stepIndex < history.length) {
     drawGrid(history[stepIndex], {});
     stepIndex++;
@@ -148,6 +168,14 @@ function resetGrid() {
   history = [];
   stepIndex = 0;
   drawGrid();
+  
+  if (chart) {
+    chart.data.labels = [];
+    chart.data.datasets.forEach((dataset) => {
+        dataset.data = [];
+    });
+    chart.update();
+  }
 }
 
 // ================ ANIMATE CONVERGENCE GRAPH ===================
@@ -166,9 +194,11 @@ function animateConvergence(history, algoName) {
   if (chart) chart.destroy();
 
   const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-  gradient.addColorStop(0, "#22d3ee");
-  gradient.addColorStop(0.5, "#3b82f6");
-  gradient.addColorStop(1, "#22c55e");
+  gradient.addColorStop(0, "#22d3ee"); /* Cyan */
+  gradient.addColorStop(1, "#3b82f6"); /* Blue */
+
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
 
   chart = new Chart(ctx, {
     type: "line",
@@ -176,36 +206,39 @@ function animateConvergence(history, algoName) {
       labels: diffs.map((_, i) => `Iter ${i + 1}`),
       datasets: [
         {
-          label: `${algoName.toUpperCase()} Convergence (Δ)`,
+          label: `${algoName === 'value' ? 'Value' : 'Policy'} Iteration Convergence`,
           data: diffs,
           fill: true,
-          borderColor: gradient,
-          backgroundColor: "rgba(59, 130, 246, 0.08)",
-          borderWidth: 3,
+          borderColor: "#22d3ee",
+          backgroundColor: "rgba(34, 211, 238, 0.1)",
+          borderWidth: 2,
           tension: 0.4,
+          pointBackgroundColor: "#0f172a",
+          pointBorderColor: "#22d3ee",
           pointRadius: 4,
-          pointBackgroundColor: "#38bdf8",
+          pointHoverRadius: 6
         },
       ],
     },
     options: {
       responsive: true,
-      animation: { duration: 1200 },
+      animation: { duration: 1000, easing: 'easeOutQuart' },
+      maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#cbd5e1" } },
+        legend: { labels: { font: { family: 'Inter', size: 12 } } },
         tooltip: {
           backgroundColor: "#1e293b",
-          borderColor: "#38bdf8",
+          titleColor: "#f8fafc",
+          bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.1)",
           borderWidth: 1,
+          padding: 10,
           displayColors: false,
-          callbacks: {
-            label: (context) => `Δ = ${context.formattedValue}`,
-          },
         },
       },
       scales: {
-        x: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
-        y: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+        x: { grid: { display: false } },
+        y: { grid: { borderDash: [4, 4] } },
       },
     },
   });
@@ -216,33 +249,39 @@ async function drawComparisonChart() {
   const algorithms = ["value", "policy"];
   const results = {};
 
-  for (let algoType of algorithms) {
-    const response = await fetch("/api/run", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rows: 4,
-        cols: 4,
-        gamma,
-        theta,
-        algorithm: algoType,
-        goal_states: goalStates,
-        danger_states: dangerStates,
-        obstacles: obstacles.map((o) => o.split(",").map(Number)),
-      }),
-    });
-    const data = await response.json();
-    const diffs = [];
-    for (let i = 1; i < data.history.length; i++) {
-      let diff = 0;
-      const keys = Object.keys(data.history[i]);
-      keys.forEach((k) => {
-        diff += Math.abs(data.history[i][k] - data.history[i - 1][k]);
-      });
-      diffs.push(diff.toFixed(5));
+  // Parallel fetch for speed
+  await Promise.all(algorithms.map(async (algoType) => {
+    try {
+        const response = await fetch("/api/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            rows: 4,
+            cols: 4,
+            gamma,
+            theta,
+            algorithm: algoType,
+            goal_states: goalStates,
+            danger_states: dangerStates,
+            obstacles: obstacles.map((o) => o.split(",").map(Number)),
+        }),
+        });
+        const data = await response.json();
+        const diffs = [];
+        for (let i = 1; i < data.history.length; i++) {
+        let diff = 0;
+        const keys = Object.keys(data.history[i]);
+        keys.forEach((k) => {
+            diff += Math.abs(data.history[i][k] - data.history[i - 1][k]);
+        });
+        diffs.push(diff.toFixed(5));
+        }
+        results[algoType] = diffs;
+    } catch (e) {
+        console.error(e);
+        results[algoType] = [];
     }
-    results[algoType] = diffs;
-  }
+  }));
 
   const ctx2 = document.getElementById("comparisonChart").getContext("2d");
   if (comparisonChart) comparisonChart.destroy();
@@ -253,29 +292,34 @@ async function drawComparisonChart() {
       labels: results["value"].map((_, i) => `Iter ${i + 1}`),
       datasets: [
         {
-          label: "Value Iteration Δ",
+          label: "Value Iteration",
           data: results["value"],
-          borderColor: "#3b82f6",
+          borderColor: "#3b82f6", /* Blue */
+          backgroundColor: "#3b82f6",
           tension: 0.4,
-          borderWidth: 3,
+          borderWidth: 2,
+          pointRadius: 0
         },
         {
-          label: "Policy Iteration Δ",
+          label: "Policy Iteration",
           data: results["policy"],
-          borderColor: "#22c55e",
+          borderColor: "#22c55e", /* Green */
+          backgroundColor: "#22c55e",
           tension: 0.4,
-          borderWidth: 3,
+          borderWidth: 2,
+          pointRadius: 0
         },
       ],
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: "#cbd5e1" } },
+        legend: { labels: { font: { family: 'Inter', size: 12 } } },
       },
       scales: {
-        x: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
-        y: { ticks: { color: "#cbd5e1" }, grid: { color: "#1e293b" } },
+        x: { grid: { display: false } },
+        y: { grid: { borderDash: [4, 4] } },
       },
     },
   });
@@ -285,9 +329,14 @@ async function drawComparisonChart() {
 updateUI();
 drawGrid();
 
+// Add keyboard navigation for legend items to meet accessibility
 document.querySelectorAll(".legend-item").forEach((item) => {
   item.addEventListener("mouseenter", () => highlightCells(item.dataset.type));
   item.addEventListener("mouseleave", clearHighlights);
+  
+  // Focus support
+  item.addEventListener("focus", () => highlightCells(item.dataset.type));
+  item.addEventListener("blur", clearHighlights);
 });
 
 function highlightCells(type) {

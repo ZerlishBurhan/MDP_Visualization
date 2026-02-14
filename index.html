@@ -2,116 +2,155 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Interactive Markov Decision Process (MDP) Visualization using GridWorld.">
   <title>MDP GridWorld Visualization</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-  <!-- ============ HEADER ============ -->
-  <header>
-    <h1>Interactive MDP GridWorld</h1>
-  </header>
 
-  <!-- ============ MAIN LAYOUT ============ -->
-  <main class="main-layout">
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
 
-    <!-- ========== GRID SECTION ========== -->
-    <section class="grid-section">
-      <div class="grid-container">
-        <div id="grid"></div>
+  <div class="app-container">
+    
+    <!-- ============ HEADER ============ -->
+    <header class="app-header">
+      <div class="header-content">
+        <h1>MDP GridWorld</h1>
+        <p class="subtitle">Interactive reinforcement learning visualization</p>
+      </div>
+    </header>
+
+    <!-- ============ MAIN LAYOUT ============ -->
+    <main class="main-layout">
+
+      <!-- ========== LEFT COLUMN: GRID ========== -->
+      <section class="grid-section card">
+        <div class="card-header">
+          <h2>Grid Environment</h2>
+        </div>
+        
+        <div class="grid-wrapper">
+          <div id="grid" class="grid-board"></div>
+        </div>
 
         <!-- LEGEND -->
-        <div class="legend">
-          <div class="legend-item" data-type="goal">
+        <div class="legend" aria-label="Grid Legend">
+          <div class="legend-item" data-type="goal" tabindex="0">
             <span class="legend-icon goal-icon">&#9733;</span>
             <span>Goal (+10)</span>
           </div>
-          <div class="legend-item" data-type="danger">
+          <div class="legend-item" data-type="danger" tabindex="0">
             <span class="legend-icon danger-icon">X</span>
             <span>Danger (−10)</span>
           </div>
-          <div class="legend-item" data-type="obstacle">
+          <div class="legend-item" data-type="obstacle" tabindex="0">
             <span class="legend-icon obstacle-icon">■</span>
             <span>Obstacle</span>
           </div>
           <div class="legend-item" data-type="policy">
-            <span class="legend-icon">&#8593; &#8595; &#8592; &#8594;</span>
-            <span>Policy Arrows</span>
+            <span class="legend-icon">&#8593;&#8595;&#8592;&#8594;</span>
+            <span>Policy</span>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- ========== CONTROL PANEL ========== -->
-    <aside class="controls">
-      <div class="control-box">
-        <label for="algo">Algorithm</label>
-        <select id="algo">
-          <option value="value">Value Iteration</option>
-          <option value="policy">Policy Iteration</option>
-        </select>
-      </div>
+      <!-- ========== RIGHT COLUMN: CONTROLS & ANALYSIS ========== -->
+      <aside class="sidebar">
+        
+        <!-- CONTROL PANEL -->
+        <section class="controls card">
+          <div class="card-header">
+            <h2>Configuration</h2>
+          </div>
+          
+          <div class="control-group">
+            <label for="algo">Algorithm</label>
+            <div class="select-wrapper">
+              <select id="algo">
+                <option value="value">Value Iteration</option>
+                <option value="policy">Policy Iteration</option>
+              </select>
+            </div>
+          </div>
 
-      <div class="control-box">
-        <label for="cellMode">Cell Mode</label>
-        <select id="cellMode">
-          <option value="normal">Normal</option>
-          <option value="goal">Set Goal</option>
-          <option value="danger">Set Danger</option>
-          <option value="obstacle">Set Obstacle</option>
-        </select>
-      </div>
+          <div class="control-group">
+            <label for="cellMode">Edit Mode</label>
+            <div class="select-wrapper">
+              <select id="cellMode">
+                <option value="normal">Inspect</option>
+                <option value="goal">Set Goal</option>
+                <option value="danger">Set Danger</option>
+                <option value="obstacle">Set Obstacle</option>
+              </select>
+            </div>
+          </div>
 
-      <div class="control-box">
-        <label>Discount Factor (γ)</label>
-        <div class="qty">
-          <button onclick="changeGamma(-0.01)">−</button>
-          <span id="gammaVal">0.90</span>
-          <button onclick="changeGamma(0.01)">+</button>
-        </div>
-      </div>
+          <div class="control-group">
+            <div class="label-row">
+              <label>Discount (γ)</label>
+              <span id="gammaVal" class="val-display">0.90</span>
+            </div>
+            <div class="button-group">
+              <button onclick="changeGamma(-0.01)" aria-label="Decrease Gamma">−</button>
+              <button onclick="changeGamma(0.01)" aria-label="Increase Gamma">+</button>
+            </div>
+          </div>
 
-      <div class="control-box">
-        <label>Theta (θ)</label>
-        <div class="qty">
-          <button onclick="changeTheta(-0.0005)">−</button>
-          <span id="thetaVal">0.0010</span>
-          <button onclick="changeTheta(0.0005)">+</button>
-        </div>
-      </div>
+          <div class="control-group">
+            <div class="label-row">
+              <label>Theta (θ)</label>
+              <span id="thetaVal" class="val-display">0.0010</span>
+            </div>
+            <div class="button-group">
+              <button onclick="changeTheta(-0.0005)" aria-label="Decrease Theta">−</button>
+              <button onclick="changeTheta(0.0005)" aria-label="Increase Theta">+</button>
+            </div>
+          </div>
 
-      <div class="control-box">
-        <button onclick="runMDP()">Run</button>
-        <button onclick="stepMDP()">Next Step</button>
-        <button onclick="resetGrid()">Reset</button>
-      </div>
-    </aside>
-  </main>
+          <div class="action-buttons">
+            <button id="btnRun" onclick="runMDP()" class="btn-primary">Run Algorithm</button>
+            <button id="btnStep" onclick="stepMDP()" class="btn-secondary">Next Step</button>
+            <button id="btnReset" onclick="resetGrid()" class="btn-danger">Reset Grid</button>
+          </div>
+        </section>
 
-  <!-- ============ ANALYSIS & VISUALIZATION SECTION ============ -->
-  <section class="analysis-section">
-    <h2>Convergence Visualization</h2>
-    <canvas id="convergenceChart"></canvas>
+        <!-- ANALYSIS SECTION -->
+        <section class="analysis card">
+          <div class="card-header">
+            <h2>Metrics</h2>
+          </div>
+          <div class="chart-container">
+            <canvas id="convergenceChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <canvas id="comparisonChart"></canvas>
+          </div>
+        </section>
 
-    <h3>Algorithm Comparison</h3>
-    <canvas id="comparisonChart"></canvas>
+      </aside>
 
-    <div class="description">
-      <h3>Algorithm Explanation</h3>
-      <p id="algoDescription">
-        Select an algorithm to visualize how its value function evolves and converges toward an optimal policy. 
-        The convergence graphs below compare the performance of Value Iteration and Policy Iteration in real-time.
-      </p>
-    </div>
-  </section>
+    </main>
 
-  <!-- ============ FOOTER (OPTIONAL) ============ -->
-  <footer>
-    <p>Developed by Zerlish Burhan</p>
-  </footer>
+    <!-- ============ FOOTER ============ -->
+    <footer>
+      <p class="footer-text">
+  © 2026 MDP GridWorld · Built by 
+  <span class="accent-text">Ahmad Shahzad</span> &
+  <span class="accent-text">Zerlish Burhan</span>
+</p>
+    </footer>
+  </div>
 
-  <!-- JS -->
   <script src="script.js"></script>
 </body>
 </html>
