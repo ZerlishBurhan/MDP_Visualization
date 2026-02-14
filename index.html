@@ -26,7 +26,7 @@
     <header class="app-header">
       <div class="header-content">
         <h1>MDP GridWorld</h1>
-        <p class="subtitle">Interactive reinforcement learning visualization</p>
+        <p class="subtitle">Visualize and Compare Reinforcement Learning Algorithms in Real Time</p>
       </div>
     </header>
 
@@ -42,6 +42,8 @@
         <div class="grid-wrapper">
           <div id="grid" class="grid-board"></div>
         </div>
+        
+        <p class="grid-hint">Adjust parameters and run the algorithm to observe convergence.</p>
 
         <!-- LEGEND -->
         <div class="legend" aria-label="Grid Legend">
@@ -97,7 +99,7 @@
 
           <div class="control-group">
             <div class="label-row">
-              <label>Discount (γ)</label>
+              <label title="Determines importance of future rewards (0-1)">Discount (γ) <span class="info-icon">?</span></label>
               <span id="gammaVal" class="val-display">0.90</span>
             </div>
             <div class="button-group">
@@ -108,7 +110,7 @@
 
           <div class="control-group">
             <div class="label-row">
-              <label>Theta (θ)</label>
+              <label title="Convergence threshold for stopping the algorithm">Theta (θ) <span class="info-icon">?</span></label>
               <span id="thetaVal" class="val-display">0.0010</span>
             </div>
             <div class="button-group">
@@ -143,11 +145,13 @@
 
     <!-- ============ FOOTER ============ -->
     <footer>
-      <p class="footer-text">
-  © 2026 MDP GridWorld · Built by 
-  <span class="accent-text">Ahmad Shahzad</span> &
-  <span class="accent-text">Zerlish Burhan</span>
-</p>
+      <div class="footer-content">
+        <p class="copyright">© 2026 MDP GridWorld <span class="version-tag">v1.0.0</span></p>
+        <p class="credits">
+          Built with <span class="tech-stack">Vanilla JS + Python</span> · 
+          By <span class="accent-text">Ahmad Shahzad</span> & <span class="accent-text">Zerlish Burhan</span>
+        </p>
+      </div>
     </footer>
   </div>
 
